@@ -1,0 +1,15 @@
+Ejemplo de uso de Short Creator:
+
+1. Coloca tu video en la carpeta input_videos/
+   Por ejemplo: input_videos/pelicula.mp4
+
+2. Configura tu API key de Gemini en el archivo .env
+   GEMINI_API_KEY=AIzaSy tu_api_key_aqui
+
+3. Ejecuta la aplicación:
+   node index.js create "input_videos/pelicula.mp4"
+
+4. Los shorts generados se guardarán en la carpeta output_shorts/
+   Cada short tendrá una duración de 30 a 50 segundos y estará en formato vertical (9:16) adecuado para YouTube Shorts
+
+5. Los archivos temporales (audio extraído, subtítulos) se guardarán en la carpeta temp/
