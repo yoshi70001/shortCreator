@@ -6,19 +6,21 @@ const path = require("path");
 const execPromise = promisify(exec);
 
 /**
- * Crea shorts a partir de segmentos virales
- * @param {string} videoPath - Ruta al video original
- * @param {Array} viralSegments - Array de segmentos virales con tiempos
- * @param {string} outputFolder - Carpeta de salida para los shorts
+ * Crea shorts a partir de segmentos virales, quemando el SRT original.
+ * @param {string} videoPath - Ruta al video original.
+ * @param {Array} viralSegments - Array de segmentos virales con tiempos.
+ * @param {string} outputFolder - Carpeta de salida para los shorts.
+ * @param {string} srtPath - Ruta al archivo de subtítulos SRT original.
  */
-async function createShorts(videoPath, viralSegments, outputFolder) {
+async function createShorts(videoPath, viralSegments, outputFolder, srtPath) {
   try {
-    // Verificar que el video existe
+    // Verificaciones iniciales
     if (!fs.existsSync(videoPath)) {
       throw new Error(`El video no existe: ${videoPath}`);
     }
-
-    // Verificar que la carpeta de salida existe
+    if (!fs.existsSync(srtPath)) {
+      throw new Error(`El archivo de subtítulos no existe: ${srtPath}`);
+    }
     if (!fs.existsSync(outputFolder)) {
       fs.mkdirSync(outputFolder, { recursive: true });
     }
@@ -29,29 +31,34 @@ async function createShorts(videoPath, viralSegments, outputFolder) {
       const { start, end, emotion } = segment;
 
       // Calcular duración del segmento
-      let duration = end - start;
-
-      // Ajustar la duración para que esté entre 30 y 50 segundos
-      duration = Math.min(Math.max(duration, 30), 50);
+      const duration = Math.min(Math.max(end - start, 30), 50);
 
       // Crear nombre de archivo para el short
-      const shortName = `short_${i + 1}_${emotion.replace("/", "-")}.mp4`;
+      const shortName = `short_${i + 1}_${emotion.replace(/[\\/:"*?<>|]/g, "-")}.mp4`;
       const outputPath = path.join(outputFolder, shortName);
 
-      // Comando ffmpeg para cortar el segmento y ajustarlo al formato de YouTube Shorts (9:16)
-      const command = `ffmpeg -i "${videoPath}" -ss ${start} -t ${duration} -vf "scale=-2:1920,crop=1080:1920" -c:v libx264 -preset fast -crf 23 -c:a copy -avoid_negative_ts make_zero "${outputPath}" -y`;
+      // Escapar la ruta del archivo SRT para el filtro de ffmpeg
+      // Es importante para manejar rutas de Windows (con '\') y caracteres especiales.
+      const escapedSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
 
-      console.log(
-        `Cortando segmento ${i + 1}/${viralSegments.length}: ${start}s-${end}s`
-      );
+      // Definir los filtros de video para ffmpeg
+      // 1. Recortar a 9:16
+      const cropFilter = "scale=-2:1920,crop=1080:1920";
+      // 2. Incrustar subtítulos desde el archivo SRT original
+      const subtitlesFilter = `subtitles='${escapedSrtPath}'`;
+
+      // Comando ffmpeg final
+      const command = `ffmpeg -i "${videoPath}" -ss ${start} -t ${duration} -vf "${cropFilter},${subtitlesFilter}" -c:v libx264 -preset fast -crf 23 -c:a copy -avoid_negative_ts make_zero "${outputPath}" -y`;
+
+      console.log(`Cortando segmento ${i + 1}/${viralSegments.length}: ${start}s-${end}s`);
       console.log("Ejecutando comando:", command);
 
       try {
-        const { stdout, stderr } = await execPromise(command);
+        await execPromise(command);
         console.log(`Short generado: ${outputPath}`);
       } catch (cutError) {
         console.error(`Error al cortar segmento ${i + 1}:`, cutError.message);
-        throw cutError;
+        // Continuar con el siguiente segmento aunque uno falle
       }
     }
 
