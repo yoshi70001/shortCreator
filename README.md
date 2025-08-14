@@ -1,6 +1,6 @@
 # Short Creator
 
-Aplicación CLI para crear shorts virales a partir de videos de películas, series o YouTube.
+Aplicación CLI para crear shorts virales a partir de múltiples videos de películas, series o YouTube.
 
 ## Descripción
 
@@ -37,34 +37,33 @@ Antes de usar esta aplicación, asegúrate de tener instalado:
 
 ## Uso
 
-1. Coloca tu video en la carpeta `input_videos/`
-2. Ejecuta la aplicación con la ruta al video:
+1. Coloca tus videos y archivos SRT en la carpeta `input_shorts/`
+2. Ejecuta la aplicación:
    ```bash
-   node index.js create "ruta/al/video.mp4"
+   node index.js create
    ```
    
-3. Opcionalmente, puedes especificar carpetas de salida y temporales:
+3. Opcionalmente, puedes especificar el número máximo de videos a procesar en paralelo (por defecto es 7):
    ```bash
-   node index.js create "ruta/al/video.mp4" -o "ruta/salida" -t "ruta/temp"
+   node index.js create --parallel-limit 3
    ```
 
 ## Estructura del Proyecto
 
-- `input_videos/`: Carpeta para videos de origen
-- `output_shorts/`: Carpeta para shorts generados
+- `input_shorts/`: Carpeta para videos de origen y sus archivos SRT
+- `output_shorts/`: Carpeta para shorts generados (organizados en subdirectorios por video)
 - `temp/`: Carpeta para archivos temporales
 - `modules/`: Módulos con funcionalidades específicas
-  - `audioExtractor.js`: Extrae audio de videos
-  - `transcriber.js`: Transcribe audio a texto
   - `geminiAnalyzer.js`: Analiza texto para encontrar segmentos virales
   - `videoCutter.js`: Corta videos en segmentos
 
 ## ¿Cómo Funciona?
 
-1. **Extracción de audio**: Usa ffmpeg para extraer el audio del video de origen manteniendo el codec original
-2. **Transcripción**: Utiliza faster-whisper para convertir el audio a texto con marcas de tiempo
-3. **Análisis emocional**: Envía el texto a Gemini AI para identificar segmentos con alto contenido emocional (duración de 30-50 segundos)
-4. **Generación de shorts**: Usa ffmpeg para cortar los segmentos identificados en videos cortos con formato vertical (9:16) adecuado para YouTube Shorts
+1. **Búsqueda de videos**: Busca todos los videos y archivos SRT en la carpeta `input_shorts/`
+2. **Procesamiento en paralelo**: Procesa múltiples videos simultáneamente (máximo 7 por defecto)
+3. **Transcripción**: Utiliza faster-whisper para convertir el audio a texto con marcas de tiempo
+4. **Análisis emocional**: Envía el texto a Gemini AI para identificar segmentos con alto contenido emocional (duración de 30-50 segundos)
+5. **Generación de shorts**: Usa ffmpeg para cortar los segmentos identificados en videos cortos con formato vertical (9:16) adecuado para YouTube Shorts
 
 ## Licencia
 
