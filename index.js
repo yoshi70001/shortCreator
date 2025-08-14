@@ -17,34 +17,106 @@ const { createShorts } = require("./modules/videoCutter");
 /**
  * Busca archivos de video y subtítulos en el directorio de entrada.
  * @param {string} inputDir - Ruta al directorio de entrada.
- * @returns {{videoPath: string, srtPath: string}} Rutas a los archivos.
+ * @returns {Array<{videoPath: string, srtPath: string}>} Array de pares de rutas a los archivos.
  */
-function findInputFiles(inputDir) {
+function findInputVideos(inputDir) {
   if (!fs.existsSync(inputDir)) {
     throw new Error(`El directorio de entrada no existe: ${inputDir}`);
   }
 
   const files = fs.readdirSync(inputDir);
   const videoExtensions = [".mp4", ".mov", ".avi", ".mkv"];
-
-  const videoFile = files.find((f) =>
+  
+  // Obtener solo los archivos de video
+  const videoFiles = files.filter((f) =>
     videoExtensions.includes(path.extname(f).toLowerCase())
   );
-  const srtFile = files.find((f) => path.extname(f).toLowerCase() === ".srt");
+  
+  // Obtener solo los archivos SRT
+  const srtFiles = files.filter((f) => path.extname(f).toLowerCase() === ".srt");
 
-  if (!videoFile) {
+  if (videoFiles.length === 0) {
     throw new Error(`No se encontró ningún archivo de video en ${inputDir}`);
   }
-  if (!srtFile) {
+  
+  // Si no hay archivos SRT, lanzar error
+  if (srtFiles.length === 0) {
     throw new Error(
       `No se encontró ningún archivo de subtítulos (.srt) en ${inputDir}`
     );
   }
 
-  return {
-    videoPath: path.join(inputDir, videoFile),
-    srtPath: path.join(inputDir, srtFile),
-  };
+  // Agrupar videos con sus archivos SRT correspondientes
+  const videoSrtPairs = videoFiles.map(videoFile => {
+    // Obtener el nombre base del video (sin extensión)
+    const videoBaseName = path.basename(videoFile, path.extname(videoFile));
+    
+    // Buscar un archivo SRT que coincida con el nombre base del video
+    const matchingSrt = srtFiles.find(srtFile => {
+      const srtBaseName = path.basename(srtFile, path.extname(srtFile));
+      return srtBaseName === videoBaseName;
+    });
+    
+    // Si no se encuentra un SRT correspondiente, usar el primero disponible
+    const srtFile = matchingSrt || srtFiles[0];
+    
+    return {
+      videoPath: path.join(inputDir, videoFile),
+      srtPath: path.join(inputDir, srtFile),
+      videoName: videoBaseName
+    };
+  });
+
+  return videoSrtPairs;
+}
+
+/**
+ * Procesa videos en lotes con un límite paralelo
+ * @param {Array<{videoPath: string, srtPath: string, videoName: string}>} videos - Array de videos a procesar
+ * @param {number} parallelLimit - Número máximo de videos a procesar en paralelo
+ * @param {string} outputFolder - Carpeta de salida para los shorts
+ * @returns {Promise<void>}
+ */
+async function processVideosInBatches(videos, parallelLimit, outputFolder) {
+  // Procesar videos en lotes
+  for (let i = 0; i < videos.length; i += parallelLimit) {
+    const batch = videos.slice(i, i + parallelLimit);
+    console.log(`\nProcesando lote de videos ${i + 1}-${Math.min(i + parallelLimit, videos.length)} de ${videos.length}...`);
+    
+    // Crear promesas para procesar todos los videos del lote en paralelo
+    const promises = batch.map(async ({ videoPath, srtPath, videoName }) => {
+      try {
+        console.log(`Procesando video: ${videoName}`);
+        
+        // Crear subdirectorio para los shorts de este video
+        const videoOutputFolder = path.join(outputFolder, videoName);
+        if (!fs.existsSync(videoOutputFolder)) {
+          fs.mkdirSync(videoOutputFolder, { recursive: true });
+        }
+        
+        // Leer y convertir subtítulos para Gemini
+        console.log(`  - Procesando subtítulos para ${videoName}...`);
+        const srtContent = fs.readFileSync(srtPath, "utf-8");
+        const transcription = convertSrtToText(srtContent);
+
+        // Analizar texto con Gemini para encontrar segmentos virales
+        console.log(`  - Analizando texto con Gemini para ${videoName}...`);
+        const viralSegments = await findViralSegments(transcription);
+
+        // Crear shorts con subtítulos a partir de los segmentos virales
+        console.log(`  - Creando shorts para ${videoName}...`);
+        await createShorts(videoPath, viralSegments, videoOutputFolder, srtPath);
+        
+        console.log(`  - ¡Video ${videoName} procesado exitosamente!`);
+      } catch (error) {
+        console.error(`Error procesando video ${videoName}:`, error.message);
+        // Continuar con otros videos aunque este falle
+      }
+    });
+    
+    // Esperar a que todos los videos del lote terminen de procesarse
+    await Promise.all(promises);
+  }
 }
 
 /**
@@ -96,9 +168,8 @@ program
 
 program
   .command("create")
-  .description("Crea shorts virales desde la carpeta 'input'")
-  // .option("-i, --input <folder>", "Carpeta de entrada con video y SRT", "input")
-  // .option("-o, --output <folder>", "Carpeta de salida para los shorts", "output_shorts")
+  .description("Crea shorts virales desde la carpeta 'input_shorts'")
+  .option("-p, --parallel-limit <number>", "Número máximo de videos a procesar en paralelo", 7)
   .action(async (options) => {
     try {
       console.log("Iniciando proceso de creación de shorts...");
@@ -120,36 +191,14 @@ program
         fs.mkdirSync(outputFolder, { recursive: true });
       }
 
-      // 1. Encontrar archivos de video y subtítulos
+      // 1. Encontrar todos los archivos de video y subtítulos
       console.log(`1. Buscando archivos en la carpeta '${inputFolder}'...`);
-      const { videoPath, srtPath } = findInputFiles(inputFolder);
-      console.log(`   - Video encontrado: ${videoPath}`);
-      console.log(`   - Subtítulos encontrados: ${srtPath}`);
+      const videos = findInputVideos(inputFolder);
+      console.log(`   - Se encontraron ${videos.length} videos para procesar`);
 
-      // 2. Leer y convertir subtítulos para Gemini
-      console.log("2. Procesando archivo de subtítulos...");
-      const srtContent = fs.readFileSync(srtPath, "utf-8");
-      const transcription = convertSrtToText(srtContent);
-
-      // 3. Analizar texto con Gemini para encontrar segmentos virales
-      console.log("3. Analizando texto con Gemini...");
-      const viralSegments = await findViralSegments(transcription);
-
-      // Guardar segmentos para depuración (opcional)
-      const tempFolder = path.resolve("temp");
-      if (!fs.existsSync(tempFolder)) fs.mkdirSync(tempFolder);
-      fs.writeFileSync(
-        path.join(tempFolder, "virals.json"),
-        JSON.stringify(viralSegments, null, 2)
-      );
-      // const viralSegments = JSON.parse(
-      //   fs.readFileSync("./temp/virals.json", {
-      //     encoding: "utf-8",
-      //   })
-      // );
-      // 4. Crear shorts con subtítulos a partir de los segmentos virales
-      console.log("4. Creando shorts con subtítulos...");
-      await createShorts(videoPath, viralSegments, outputFolder, srtPath);
+      // 2. Procesar videos en lotes con límite paralelo
+      console.log("2. Procesando videos en paralelo...");
+      await processVideosInBatches(videos, parseInt(options.parallelLimit), outputFolder);
 
       console.log("¡Proceso completado! Shorts generados en:", outputFolder);
     } catch (error) {
