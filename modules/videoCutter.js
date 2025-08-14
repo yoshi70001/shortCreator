@@ -6,7 +6,7 @@ const path = require("path");
 const execPromise = promisify(exec);
 
 /**
- * Crea shorts a partir de segmentos virales, quemando el SRT original.
+ * Crea shorts a partir de segmentos virales, quemando el SRT original con fondo desenfocado.
  * @param {string} videoPath - Ruta al video original.
  * @param {Array} viralSegments - Array de segmentos virales con tiempos.
  * @param {string} outputFolder - Carpeta de salida para los shorts.
@@ -34,23 +34,37 @@ async function createShorts(videoPath, viralSegments, outputFolder, srtPath) {
       const duration = Math.min(Math.max(end - start, 30), 50);
 
       // Crear nombre de archivo para el short
-      const shortName = `short_${i + 1}_${emotion.replace(/[\\/:"*?<>|]/g, "-")}.mp4`;
+      const shortName = `short_${i + 1}_${emotion.replace(
+        /[\\/:"*?<>|]/g,
+        "-"
+      )}.mp4`;
       const outputPath = path.join(outputFolder, shortName);
 
       // Escapar la ruta del archivo SRT para el filtro de ffmpeg
-      // Es importante para manejar rutas de Windows (con '\') y caracteres especiales.
-      const escapedSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+      const escapedSrtPath = srtPath.replace(/\\/g, "/").replace(/:/g, "\\:");
 
-      // Definir los filtros de video para ffmpeg
-      // 1. Recortar a 9:16
-      const cropFilter = "scale=-2:1920,crop=1080:1920";
-      // 2. Incrustar subtítulos desde el archivo SRT original
-      const subtitlesFilter = `subtitles='${escapedSrtPath}'`;
+      // --- INICIO DE CAMBIOS ---
 
-      // Comando ffmpeg final
-      const command = `ffmpeg -i "${videoPath}" -ss ${start} -t ${duration} -vf "${cropFilter},${subtitlesFilter}" -c:v libx264 -preset fast -crf 23 -c:a copy -avoid_negative_ts make_zero "${outputPath}" -y`;
+      // Definir el filtro complejo para:
+      // 1. [bg] Crear fondo vertical (1080x1920) escalado, recortado y desenfocado.
+      // 2. [main] Escalar video original a 1080p de alto, recortarlo a 1080x1080 y LUEGO quemar subtítulos.
+      // 3. Superponer el video [main] centrado sobre el fondo [bg].
+      const filterComplex = `
+        [0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=10[bg];
+        [0:v]scale=-2:1080,crop=1080:1080,subtitles='${escapedSrtPath}':force_style='Alignment=2'[main];
+        [bg][main]overlay=(W-w)/2:(H-h)/2[v]
+      `
+        .replace(/\s+/g, " ")
+        .trim();
 
-      console.log(`Cortando segmento ${i + 1}/${viralSegments.length}: ${start}s-${end}s`);
+      // Comando ffmpeg final con mapeo de video [v] y de audio 0:a?
+      const command = `ffmpeg -i "${videoPath}" -ss ${start} -t ${duration} -filter_complex "${filterComplex}" -map "[v]" -map 0:a? -c:v libx264 -preset fast -crf 23 -c:a copy -avoid_negative_ts make_zero "${outputPath}" -y`;
+
+      // --- FIN DE CAMBIOS ---
+
+      console.log(
+        `Cortando segmento ${i + 1}/${viralSegments.length}: ${start}s-${end}s`
+      );
       console.log("Ejecutando comando:", command);
 
       try {
