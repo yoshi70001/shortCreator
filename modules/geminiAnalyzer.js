@@ -4,7 +4,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Modelo a usar (puedes cambiarlo según tus preferencias)
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 /**
  * Analiza la transcripción para encontrar segmentos virales basados en emociones
@@ -40,9 +40,9 @@ async function findViralSegments(transcription) {
     
     // Generar contenido con Gemini
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
-    
+    console.debug('Respuesta de Gemini:', text);
     // Extraer el JSON de la respuesta
     const jsonStart = text.indexOf('[');
     const jsonEnd = text.lastIndexOf(']') + 1;
