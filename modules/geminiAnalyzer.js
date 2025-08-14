@@ -1,10 +1,10 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const fs = require("fs");
 // Inicializar el cliente de Gemini con la API key
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Modelo a usar (puedes cambiarlo según tus preferencias)
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
 /**
  * Analiza la transcripción para encontrar segmentos virales basados en emociones
@@ -36,25 +36,29 @@ async function findViralSegments(transcription) {
     ${transcription}
     `;
 
-    console.log('Enviando transcripción a Gemini para análisis...');
-    
+    console.log("Enviando transcripción a Gemini para análisis...");
+
     // Generar contenido con Gemini
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
-    console.debug('Respuesta de Gemini:', text);
+    console.debug("Respuesta de Gemini:", text);
     // Extraer el JSON de la respuesta
-    const jsonStart = text.indexOf('[');
-    const jsonEnd = text.lastIndexOf(']') + 1;
+    const jsonStart = text.indexOf("[");
+    const jsonEnd = text.lastIndexOf("]") + 1;
     const jsonString = text.substring(jsonStart, jsonEnd);
-    
+
     // Parsear el JSON
     const viralSegments = JSON.parse(jsonString);
-    
-    console.log('Segmentos virales identificados:', viralSegments.length);
+
+    console.log("Segmentos virales identificados:", viralSegments.length);
+    fs.writeFileSync(
+      "viral_segments.json",
+      JSON.stringify(viralSegments, null, 2)
+    );
     return viralSegments;
   } catch (error) {
-    console.error('Error al analizar con Gemini:', error.message);
+    console.error("Error al analizar con Gemini:", error.message);
     throw error;
   }
 }
