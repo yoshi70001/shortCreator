@@ -29,7 +29,7 @@ Antes de usar esta aplicación, asegúrate de tener instalado:
 
 ## Configuración
 
-1. Crea un archivo `.env` en la raíz del proyecto
+1. Crea un archivo `.env` en la raíz del proyecto (este archivo está incluido en .gitignore y ha sido eliminado del historial del repositorio)
 2. Agrega tu API key de Gemini:
    ```
    GEMINI_API_KEY=tu_api_key_aqui
