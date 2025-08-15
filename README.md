@@ -1,70 +1,97 @@
-# Short Creator
+# 🎬 Short Creator: Viral Video Automation 🚀
 
-Aplicación CLI para crear shorts virales a partir de múltiples videos de películas, series o YouTube.
+![Versión](https://img.shields.io/badge/version-1.0.0-blue)
+![Licencia](https://img.shields.io/badge/license-MIT-green)
+![Node.js](https://img.shields.io/badge/node-%3E%3D14-yellow)
 
-## Descripción
+**Short Creator** is a powerful CLI application that automates the creation of viral short videos from your favorite movies, series, or YouTube content. 🎞️
 
-Esta aplicación automatiza el proceso de creación de contenido viral para redes sociales a partir de videos largos. Utiliza las siguientes tecnologías:
+## ✨ Features
 
-- **ffmpeg**: Para extraer audio y cortar segmentos de video
-- **faster-whisper**: Para transcribir el audio a texto
-- **Gemini AI**: Para analizar el contenido emocional y determinar qué segmentos tienen mayor potencial de volverse virales
+*   **Automatic Viral Segment Detection:** Uses Gemini AI to analyze video transcripts and identify the most emotionally impactful segments.
+*   **Parallel Processing:**  Efficiently processes multiple videos at once to speed up your workflow.
+*   **Customizable Output:** Generates videos in the vertical 9:16 format, perfect for YouTube Shorts, TikTok, and Instagram Reels.
+*   **Easy to Use:** Simply add your videos and run a single command to start creating.
 
-## Requisitos Previos
+## 🛠️ Tech Stack
 
-Antes de usar esta aplicación, asegúrate de tener instalado:
+*   **[Node.js](https://nodejs.org/)**: For the application's core logic.
+*   **[ffmpeg](https://ffmpeg.org/)**: For video manipulation and rendering.
+*   **[faster-whisper](https://github.com/guillaumekln/faster-whisper)**: For high-performance audio transcription.
+*   **[Gemini AI](https://ai.google.dev/)**: For intelligent content analysis and selection.
 
-1. **Node.js** (versión 14 o superior)
-2. **ffmpeg** - Debe estar agregado al PATH del sistema
-3. **faster-whisper** - Debe estar instalado y agregado al PATH del sistema
+## 🚀 Getting Started
 
-## Instalación
+### Prerequisites
 
-1. Clona este repositorio o descarga los archivos
-2. Navega a la carpeta del proyecto
-3. Instala las dependencias de Node.js:
-   ```bash
-   npm install
-   ```
+Make sure you have the following installed on your system:
 
-## Configuración
+*   [Node.js](https://nodejs.org/) (version 14 or higher)
+*   [ffmpeg](https://ffmpeg.org/download.html) (must be added to your system's PATH)
+*   [faster-whisper](https://github.com/guillaumekln/faster-whisper#installation)
 
-1. Crea un archivo `.env` en la raíz del proyecto (este archivo está incluido en .gitignore y ha sido eliminado del historial del repositorio)
-2. Agrega tu API key de Gemini:
-   ```
-   GEMINI_API_KEY=tu_api_key_aqui
-   ```
+### Installation
 
-## Uso
+1.  **Clone the repository:**
 
-1. Coloca tus videos y archivos SRT en la carpeta `input_shorts/`
-2. Ejecuta la aplicación:
-   ```bash
-   node index.js create
-   ```
-   
-3. Opcionalmente, puedes especificar el número máximo de videos a procesar en paralelo (por defecto es 7):
-   ```bash
-   node index.js create --parallel-limit 3
-   ```
+    ```bash
+    git clone https://github.com/your-username/short-creator.git
+    cd short-creator
+    ```
 
-## Estructura del Proyecto
+2.  **Install the dependencies:**
 
-- `input_shorts/`: Carpeta para videos de origen y sus archivos SRT
-- `output_shorts/`: Carpeta para shorts generados (organizados en subdirectorios por video)
-- `temp/`: Carpeta para archivos temporales
-- `modules/`: Módulos con funcionalidades específicas
-  - `geminiAnalyzer.js`: Analiza texto para encontrar segmentos virales
-  - `videoCutter.js`: Corta videos en segmentos
+    ```bash
+    npm install
+    ```
 
-## ¿Cómo Funciona?
+3.  **Set up your environment variables:**
 
-1. **Búsqueda de videos**: Busca todos los videos y archivos SRT en la carpeta `input_shorts/`
-2. **Procesamiento en paralelo**: Procesa múltiples videos simultáneamente (máximo 7 por defecto)
-3. **Transcripción**: Utiliza faster-whisper para convertir el audio a texto con marcas de tiempo
-4. **Análisis emocional**: Envía el texto a Gemini AI para identificar segmentos con alto contenido emocional (duración de 30-50 segundos)
-5. **Generación de shorts**: Usa ffmpeg para cortar los segmentos identificados en videos cortos con formato vertical (9:16) adecuado para YouTube Shorts
+    Create a `.env` file in the root of the project and add your Gemini API key:
 
-## Licencia
+    ```
+    GEMINI_API_KEY=your_gemini_api_key
+    ```
 
-MIT
+## 📖 Usage
+
+1.  **Add your videos:**
+
+    Place your video files (e.g., `.mp4`, `.mkv`) in the `input_shorts` directory.
+
+2.  **Run the application:**
+
+    ```bash
+    node index.js create
+    ```
+
+3.  **Optional: Adjust the parallel processing limit:**
+
+    By default, the application processes up to 7 videos in parallel. You can change this with the `--parallel-limit` flag:
+
+    ```bash
+    node index.js create --parallel-limit 3
+    ```
+
+## 📂 Project Structure
+
+```
+short-creator/
+├── input_shorts/      # Your input videos
+├── output_shorts/     # Your generated short videos
+├── modules/
+│   ├── geminiAnalyzer.js # Interacts with the Gemini AI API
+│   └── videoCutter.js    # Cuts videos with ffmpeg
+├── .env                 # Your environment variables
+├── index.js             # The main application file
+├── package.json         # Project dependencies and scripts
+└── README.md            # This file
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! If you have any ideas, suggestions, or bug reports, please open an issue or create a pull request.
+
+## 📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
